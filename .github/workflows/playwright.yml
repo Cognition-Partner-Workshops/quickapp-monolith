@@ -1,0 +1,62 @@
+name: Playwright end-to-end tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: QuickApp@Pass123
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"QuickApp@Pass123\" -C -Q \"SELECT 1\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: quickapp.client/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: quickapp.client
+        run: npm ci
+
+      - name: Install Playwright browser
+        working-directory: quickapp.client
+        run: npx playwright install --with-deps chromium
+
+      - name: Build solution
+        run: dotnet build QuickApp.sln -c Debug
+
+      - name: Run Playwright tests
+        working-directory: quickapp.client
+        run: npm run test:e2e
+        env:
+          CI: true
+          ConnectionStrings__DefaultConnection: Server=localhost,1433;Database=QuickApp;User Id=sa;Password=QuickApp@Pass123;TrustServerCertificate=true;MultipleActiveResultSets=true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: quickapp.client/playwright-report
+          retention-days: 14

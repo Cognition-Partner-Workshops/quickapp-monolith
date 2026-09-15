@@ -220,6 +220,10 @@ Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.co
 
 > **Note:** Change these passwords immediately in production!
 
+### End-to-End Tests
+
+Browser tests run with Playwright from `quickapp.client` via `npm run test:e2e`. See [quickapp.client/e2e/README.md](quickapp.client/e2e/README.md) for setup.
+
 ---
 
 ## Prompting Guidelines for AI Tools
