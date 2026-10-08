@@ -5,7 +5,7 @@ set -euo pipefail
 
 MONOLITH_URL="${MONOLITH_URL:-http://localhost:8080}"
 ORDER_SERVICE_URL="${ORDER_SERVICE_URL:-http://localhost:5003}"
-ORDER_SERVICE_API_KEY="${ORDER_SERVICE_API_KEY:-local-dev-order-service-key}"
+ORDER_SERVICE_API_KEY="${ORDER_SERVICE_API_KEY:?Set ORDER_SERVICE_API_KEY to the key the stack was started with}"
 SVC_AUTH=(-H "X-Internal-Api-Key: $ORDER_SERVICE_API_KEY")
 SMOKE_USERNAME="${SMOKE_USERNAME:-admin}"
 SMOKE_PASSWORD="${SMOKE_PASSWORD:-tempP@ss123}"

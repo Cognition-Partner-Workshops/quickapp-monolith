@@ -15,7 +15,7 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=QuickApp;User Id=sa;Password=${MSSQL_SA_PASSWORD:-QuickApp_Dev_Passw0rd};TrustServerCertificate=true;MultipleActiveResultSets=true"
       OrderService__BaseUrl: "http://order-service:5003/"
-      OrderService__ApiKey: "${ORDER_SERVICE_API_KEY:-local-dev-order-service-key}"
+      OrderService__ApiKey: "${ORDER_SERVICE_API_KEY:?Set ORDER_SERVICE_API_KEY (e.g. export ORDER_SERVICE_API_KEY=$$(openssl rand -hex 32))}"
       OIDC__DisableTransportSecurityRequirement: "true"
     depends_on:
       sqlserver:
@@ -29,10 +29,10 @@ services:
       dockerfile: Services/Order/Order.API/Dockerfile
     image: quickapp/order-service:local
     ports:
-      - "5003:5003"
+      - "127.0.0.1:5003:5003"
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=orderdb;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}"
-      ServiceAuth__ApiKey: "${ORDER_SERVICE_API_KEY:-local-dev-order-service-key}"
+      ServiceAuth__ApiKey: "${ORDER_SERVICE_API_KEY:?Set ORDER_SERVICE_API_KEY (e.g. export ORDER_SERVICE_API_KEY=$$(openssl rand -hex 32))}"
     healthcheck:
       # The aspnet runtime image has no curl, so probe /healthz over bash's /dev/tcp.
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/5003 && printf 'GET /healthz HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
