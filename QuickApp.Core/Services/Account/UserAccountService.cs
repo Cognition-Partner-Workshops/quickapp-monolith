@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using QuickApp.Core.Infrastructure;
 using QuickApp.Core.Models.Account;
+using QuickApp.Core.Services.Shop;
 
 namespace QuickApp.Core.Services.Account
 {
@@ -15,11 +16,14 @@ namespace QuickApp.Core.Services.Account
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IOrdersService _ordersService;
 
-        public UserAccountService(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public UserAccountService(ApplicationDbContext context, UserManager<ApplicationUser> userManager,
+            IOrdersService ordersService)
         {
             _context = context;
             _userManager = userManager;
+            _ordersService = ordersService;
         }
 
         public async Task<ApplicationUser?> GetUserByIdAsync(string userId)
@@ -189,7 +193,7 @@ namespace QuickApp.Core.Services.Account
         {
             var errors = new List<string>();
 
-            if (await _context.Orders.Where(o => o.CashierId == userId).AnyAsync())
+            if (await _ordersService.CountOrdersAsync(cashierId: userId) > 0)
                 errors.Add("User has associated orders");
 
             //canDelete = !await ; //Do other tests...

@@ -11,6 +11,7 @@ using QuickApp.Core.Models.Shop;
 using QuickApp.Core.Services.Account;
 using QuickApp.Server.ViewModels.Account;
 using QuickApp.Server.ViewModels.Shop;
+using Shared.Contracts.Orders;
 
 namespace QuickApp.Server.Configuration
 {
@@ -52,13 +53,19 @@ namespace QuickApp.Server.Configuration
                 .ConvertUsing(s => ((PermissionVM)ApplicationPermissions.GetPermissionByValue(s.ClaimValue))!);
 
             CreateMap<Customer, CustomerVM>()
+                .ForMember(d => d.Orders, map => map.Ignore())
                 .ReverseMap();
 
             CreateMap<Product, ProductVM>()
                 .ReverseMap();
 
-            CreateMap<Order, OrderVM>()
-                .ReverseMap();
+            CreateMap<OrderDto, OrderVM>();
+            CreateMap<OrderItemDto, OrderItemVM>();
+
+            CreateMap<CreateOrderVM, CreateOrderRequest>()
+                .ForMember(d => d.CashierId, map => map.Ignore());
+            CreateMap<CreateOrderItemVM, CreateOrderItemRequest>();
+            CreateMap<UpdateOrderVM, UpdateOrderRequest>();
         }
     }
 }

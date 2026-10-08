@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/Logs/
+**/node_modules/
+**/.angular/
+quickapp.client/dist/
+**/*.user
+.git/
+.vs/
+.vscode/
+.idea/

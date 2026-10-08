@@ -22,10 +22,6 @@ namespace QuickApp.Core.Infrastructure
 
         public DbSet<Product> Products { get; set; }
 
-        public DbSet<Order> Orders { get; set; }
-
-        public DbSet<OrderDetail> OrderDetails { get; set; }
-
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -77,14 +73,6 @@ namespace QuickApp.Core.Infrastructure
             builder.Entity<Product>().Property(p => p.BuyingPrice).HasColumnType(priceDecimalType);
             builder.Entity<Product>().Property(p => p.SellingPrice).HasColumnType(priceDecimalType);
             builder.Entity<Product>().ToTable($"{tablePrefix}{nameof(Products)}");
-
-            builder.Entity<Order>().Property(o => o.Comments).HasMaxLength(500);
-            builder.Entity<Order>().Property(p => p.Discount).HasColumnType(priceDecimalType);
-            builder.Entity<Order>().ToTable($"{tablePrefix}{nameof(Orders)}");
-
-            builder.Entity<OrderDetail>().Property(p => p.UnitPrice).HasColumnType(priceDecimalType);
-            builder.Entity<OrderDetail>().Property(p => p.Discount).HasColumnType(priceDecimalType);
-            builder.Entity<OrderDetail>().ToTable($"{tablePrefix}{nameof(OrderDetails)}");
         }
 
         public override int SaveChanges()
