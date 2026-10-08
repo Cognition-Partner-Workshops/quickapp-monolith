@@ -4,6 +4,7 @@
 // (c) 2024 www.ebenmonney.com/mit-license
 // ---------------------------------------
 
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using QuickApp.Core.Services.Shop;
@@ -11,13 +12,26 @@ using QuickApp.Core.Services.Shop;
 namespace QuickApp.Server.Attributes
 {
     /// <summary>
-    /// Translates order-service failures into 503 responses instead of unhandled 500s.
+    /// Translates order-service failures into 503 responses (400s pass through) instead of unhandled 500s.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
     public sealed class OrderServiceUnavailableAttribute : ExceptionFilterAttribute
     {
         public override void OnException(ExceptionContext context)
         {
+            // order-service owns business validation (e.g. discount limits); pass its 400 ProblemDetails through.
+            if (context.Exception is OrderServiceException { StatusCode: HttpStatusCode.BadRequest } validation)
+            {
+                context.Result = new ContentResult
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    Content = validation.ResponseBody,
+                    ContentType = "application/problem+json"
+                };
+                context.ExceptionHandled = true;
+                return;
+            }
+
             if (!IsOrderServiceFailure(context.Exception))
                 return;
 

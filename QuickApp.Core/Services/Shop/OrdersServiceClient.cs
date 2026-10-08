@@ -93,7 +93,7 @@ namespace QuickApp.Core.Services.Shop
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new OrderServiceException(
                 $"order-service returned {(int)response.StatusCode} for {response.RequestMessage?.Method} " +
-                $"{response.RequestMessage?.RequestUri}: {body}", response.StatusCode);
+                $"{response.RequestMessage?.RequestUri}: {body}", response.StatusCode, body);
         }
     }
 }

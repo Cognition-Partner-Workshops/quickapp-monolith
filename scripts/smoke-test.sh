@@ -83,6 +83,7 @@ expect 200 "$(request PUT "$MONOLITH_URL/api/orders/$ORDER_ID" "${AUTH[@]}" "${J
 pass "updated total=245"
 
 expect 400 "$(request POST "$MONOLITH_URL/api/orders" "${AUTH[@]}" "${JSON[@]}" -d "{\"customerId\":$CUSTOMER_ID,\"items\":[]}")" "reject order without items"
+expect 400 "$(request POST "$MONOLITH_URL/api/orders" "${AUTH[@]}" "${JSON[@]}" -d "{\"customerId\":$CUSTOMER_ID,\"discount\":1000,\"items\":[{\"productId\":1,\"unitPrice\":10,\"quantity\":1}]}")" "reject discount above order subtotal (order-service 400 passed through)"
 
 expect 204 "$(request DELETE "$MONOLITH_URL/api/orders/$ORDER_ID" "${AUTH[@]}")" "delete order via monolith"
 expect 404 "$(request GET "$ORDER_SERVICE_URL/api/orders/$ORDER_ID")" "order $ORDER_ID removed from order-service"
