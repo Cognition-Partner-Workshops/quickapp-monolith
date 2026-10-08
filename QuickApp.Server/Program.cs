@@ -1,4 +1,4 @@
-// ---------------------------------------
+﻿// ---------------------------------------
 // Email: quickapp@ebenmonney.com
 // Templates: www.ebenmonney.com/templates
 // (c) 2024 www.ebenmonney.com/mit-license
@@ -7,6 +7,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.OpenApi.Models;
 using OpenIddict.Validation.AspNetCore;
@@ -129,8 +130,12 @@ builder.Services.AddOpenIddict()
             }
         }
 
-        options.UseAspNetCore()
+        var aspNetCoreServer = options.UseAspNetCore()
                .EnableTokenEndpointPassthrough();
+
+        // Only for local container stacks without TLS (e.g. docker-compose). Keep disabled elsewhere.
+        if (builder.Configuration.GetValue<bool>("OIDC:DisableTransportSecurityRequirement"))
+            aspNetCoreServer.DisableTransportSecurityRequirement();
     })
     .AddValidation(options =>
     {
@@ -194,7 +199,18 @@ builder.Services.AddScoped<IUserAccountService, UserAccountService>();
 builder.Services.AddScoped<IUserRoleService, UserRoleService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<IOrdersService, OrdersService>();
+
+// Orders live in the external order-service
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CorrelationIdDelegatingHandler>();
+builder.Services.AddHttpClient<IOrdersService, OrdersServiceClient>(client =>
+    {
+        var baseUrl = builder.Configuration["OrderService:BaseUrl"]
+            ?? throw new InvalidOperationException("Configuration value 'OrderService:BaseUrl' was not found.");
+        client.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/");
+    })
+    .AddHttpMessageHandler<CorrelationIdDelegatingHandler>()
+    .AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods());
 
 // Other Services
 builder.Services.AddScoped<IEmailSender, EmailSender>();

@@ -8,6 +8,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using QuickApp.Core.Services;
 using QuickApp.Core.Services.Shop;
+using QuickApp.Server.Attributes;
 using QuickApp.Server.Services.Email;
 using QuickApp.Server.ViewModels.Shop;
 
@@ -15,27 +16,37 @@ namespace QuickApp.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [OrderServiceUnavailable]
     public class CustomerController : ControllerBase
     {
         private readonly IMapper _mapper;
         private readonly ILogger _logger;
         private readonly IEmailSender _emailSender;
         private readonly ICustomerService _customerService;
+        private readonly IOrdersService _ordersService;
 
         public CustomerController(IMapper mapper, ILogger<CustomerController> logger, IEmailSender emailSender,
-            ICustomerService customerService)
+            ICustomerService customerService, IOrdersService ordersService)
         {
             _mapper = mapper;
             _logger = logger;
             _emailSender = emailSender;
             _customerService = customerService;
+            _ordersService = ordersService;
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-            var allCustomers = _customerService.GetAllCustomersData();
-            return Ok(_mapper.Map<IEnumerable<CustomerVM>>(allCustomers));
+            var customers = _mapper.Map<List<CustomerVM>>(_customerService.GetAllCustomersData());
+
+            var ordersByCustomer = (await _ordersService.GetOrdersAsync(cancellationToken: cancellationToken))
+                .ToLookup(o => o.CustomerId);
+
+            foreach (var customer in customers)
+                customer.Orders = _mapper.Map<List<OrderVM>>(ordersByCustomer[customer.Id]);
+
+            return Ok(customers);
         }
 
         [HttpGet("throw")]

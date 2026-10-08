@@ -22,6 +22,7 @@
     <PackageReference Include="AutoMapper" Version="13.0.1" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
     <PackageReference Include="MailKit" Version="4.14.1" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
     <PackageReference Include="OpenIddict.AspNetCore" Version="7.2.0" />
     <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="7.2.0" />
     <PackageReference Include="OpenIddict.Quartz" Version="7.2.0" />
@@ -41,7 +42,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\quickapp.client\quickapp.client.esproj">
+    <!-- SkipSpaBuild=true lets container builds publish the server without Node; the Angular app is built in its own stage -->
+    <ProjectReference Include="..\quickapp.client\quickapp.client.esproj" Condition="'$(SkipSpaBuild)' != 'true'">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
     <ProjectReference Include="..\QuickApp.Core\QuickApp.Core.csproj" />

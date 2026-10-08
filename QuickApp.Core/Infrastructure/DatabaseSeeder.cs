@@ -10,11 +10,14 @@ using QuickApp.Core.Models;
 using QuickApp.Core.Models.Account;
 using QuickApp.Core.Models.Shop;
 using QuickApp.Core.Services.Account;
+using QuickApp.Core.Services.Shop;
+using Shared.Contracts.Orders;
 
 namespace QuickApp.Core.Infrastructure
 {
     public class DatabaseSeeder(ApplicationDbContext dbContext, ILogger<DatabaseSeeder> logger,
-        IUserAccountService userAccountService, IUserRoleService userRoleService) : IDatabaseSeeder
+        IUserAccountService userAccountService, IUserRoleService userRoleService,
+        IOrdersService ordersService) : IDatabaseSeeder
     {
         public async Task SeedAsync()
         {
@@ -176,42 +179,6 @@ namespace QuickApp.Core.Infrastructure
                     ProductCategory = prodCat_1
                 };
 
-                var ordr_1 = new Order
-                {
-                    Discount = 500,
-                    Cashier = await dbContext.Users.OrderBy(u => u.UserName).FirstAsync(),
-                    Customer = cust_1
-                };
-
-                var ordr_2 = new Order
-                {
-                    Cashier = await dbContext.Users.OrderBy(u => u.UserName).FirstAsync(),
-                    Customer = cust_2
-                };
-
-                ordr_1.OrderDetails.Add(new()
-                {
-                    UnitPrice = prod_1.SellingPrice,
-                    Quantity = 1,
-                    Product = prod_1,
-                    Order = ordr_1
-                });
-                ordr_1.OrderDetails.Add(new()
-                {
-                    UnitPrice = prod_2.SellingPrice,
-                    Quantity = 1,
-                    Product = prod_2,
-                    Order = ordr_1
-                });
-
-                ordr_2.OrderDetails.Add(new()
-                {
-                    UnitPrice = prod_2.SellingPrice,
-                    Quantity = 1,
-                    Product = prod_2,
-                    Order = ordr_2
-                });
-
                 dbContext.Customers.Add(cust_1);
                 dbContext.Customers.Add(cust_2);
                 dbContext.Customers.Add(cust_3);
@@ -220,12 +187,55 @@ namespace QuickApp.Core.Infrastructure
                 dbContext.Products.Add(prod_1);
                 dbContext.Products.Add(prod_2);
 
-                dbContext.Orders.Add(ordr_1);
-                dbContext.Orders.Add(ordr_2);
-
                 await dbContext.SaveChangesAsync();
 
+                var cashierId = (await dbContext.Users.OrderBy(u => u.UserName).FirstAsync()).Id;
+
+                await SeedDemoOrdersAsync(
+                [
+                    new CreateOrderRequest
+                    {
+                        CustomerId = cust_1.Id,
+                        CashierId = cashierId,
+                        Discount = 500,
+                        Items =
+                        [
+                            new CreateOrderItemRequest { ProductId = prod_1.Id, UnitPrice = prod_1.SellingPrice, Quantity = 1 },
+                            new CreateOrderItemRequest { ProductId = prod_2.Id, UnitPrice = prod_2.SellingPrice, Quantity = 1 }
+                        ]
+                    },
+                    new CreateOrderRequest
+                    {
+                        CustomerId = cust_2.Id,
+                        CashierId = cashierId,
+                        Items =
+                        [
+                            new CreateOrderItemRequest { ProductId = prod_2.Id, UnitPrice = prod_2.SellingPrice, Quantity = 1 }
+                        ]
+                    }
+                ]);
+
                 logger.LogInformation("Seeding demo data completed");
+            }
+        }
+
+        /// <summary>
+        /// Orders are owned by order-service, so demo orders are created over HTTP.
+        /// Seeding is best-effort: the monolith must still start if order-service is unavailable.
+        /// </summary>
+        private async Task SeedDemoOrdersAsync(IEnumerable<CreateOrderRequest> orders)
+        {
+            try
+            {
+                if (await ordersService.CountOrdersAsync() > 0)
+                    return;
+
+                foreach (var order in orders)
+                    await ordersService.CreateOrderAsync(order);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Skipped seeding demo orders: order-service is unavailable");
             }
         }
     }

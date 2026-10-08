@@ -1,0 +1,78 @@
+# Local dev stack: monolith (+ SQL Server) calling the extracted order-service (+ PostgreSQL).
+# order-service is built from a sibling checkout of quickapp-microservices; override ORDER_SERVICE_CONTEXT if needed.
+#   docker compose up --build -d && ./scripts/smoke-test.sh
+name: quickapp
+
+services:
+  monolith:
+    build:
+      context: .
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+    image: quickapp/monolith:local
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=QuickApp;User Id=sa;Password=${MSSQL_SA_PASSWORD:-QuickApp_Dev_Passw0rd};TrustServerCertificate=true;MultipleActiveResultSets=true"
+      OrderService__BaseUrl: "http://order-service:5003/"
+      OIDC__DisableTransportSecurityRequirement: "true"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: ${ORDER_SERVICE_CONTEXT:-../quickapp-microservices/src}
+      dockerfile: Services/Order/Order.API/Dockerfile
+    image: quickapp/order-service:local
+    ports:
+      - "5003:5003"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=orderdb;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}"
+    healthcheck:
+      # The aspnet runtime image has no curl, so probe /healthz over bash's /dev/tcp.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/5003 && printf 'GET /healthz HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: orderdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orderdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - order_pgdata:/var/lib/postgresql/data
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-QuickApp_Dev_Passw0rd}
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    volumes:
+      - monolith_sqldata:/var/opt/mssql
+
+volumes:
+  order_pgdata:
+  monolith_sqldata:

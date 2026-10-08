@@ -1,4 +1,4 @@
-# **QuickApp** - The AI-Ready Reference Architecture for Angular 21 / ASP.NET Core 10 Projects
+﻿# **QuickApp** - The AI-Ready Reference Architecture for Angular 21 / ASP.NET Core 10 Projects
 
 [![MIT license](https://cdn.rawgit.com/emonney/tempa/7e9d69ad/MITLicense.png)](https://github.com/emonney/QuickApp/blob/master/LICENSE)
 [![VSIX Downloads](https://img.shields.io/visual-studio-marketplace/d/adentum.QuickApp-ASPNETCoreAngularXProjectTemplate)](https://marketplace.visualstudio.com/items?itemName=adentum.QuickApp-ASPNETCoreAngularXProjectTemplate)
@@ -100,6 +100,30 @@ AI performs best when the rules are clear. QuickApp makes the rules boring and o
 - ✅ **Opinionated but extensible** - Clear patterns, easy to extend
 - ✅ **One obvious way** - Reduces decision fatigue
 - ✅ **AI-friendly patterns** - Structure that AI tools can reliably follow
+
+---
+
+## Order Service Extraction
+
+Orders are no longer stored in the monolith database. They are owned by `order-service` in
+[`quickapp-microservices`](https://github.com/Cognition-Partner-Workshops/quickapp-microservices) and accessed over HTTP:
+
+- `IOrdersService` is implemented by `OrdersServiceClient`, a typed `HttpClient` with the standard resilience handler (retries are disabled for POST/PUT/DELETE). It propagates `X-Correlation-ID`.
+- Configure the base URL with `OrderService:BaseUrl` (default `http://localhost:5003/`).
+- `api/orders` in the monolith is an authenticated facade over order-service. `api/customer` attaches each customer's orders from order-service.
+- The order contracts (`QuickApp.Core/Contracts/Orders`) are a vendored copy of `Shared.Contracts.Orders`.
+- Migration `ExtractOrdersToOrderService` drops `AppOrders`/`AppOrderDetails`. **Existing order data must be copied to order-service before applying it.**
+
+### Local stack (Docker Compose)
+
+Requires `quickapp-microservices` checked out next to this repo (override with `ORDER_SERVICE_CONTEXT`).
+
+```bash
+docker compose up --build -d   # monolith :8080 + SQL Server, order-service :5003 + PostgreSQL
+./scripts/smoke-test.sh        # end-to-end check through the monolith and order-service (needs curl + jq)
+```
+
+`OIDC__DisableTransportSecurityRequirement=true` is set in compose only, so the token endpoint works over plain HTTP locally.
 
 ---
 
