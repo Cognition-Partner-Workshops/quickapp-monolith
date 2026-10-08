@@ -5,6 +5,8 @@ set -euo pipefail
 
 MONOLITH_URL="${MONOLITH_URL:-http://localhost:8080}"
 ORDER_SERVICE_URL="${ORDER_SERVICE_URL:-http://localhost:5003}"
+ORDER_SERVICE_API_KEY="${ORDER_SERVICE_API_KEY:-local-dev-order-service-key}"
+SVC_AUTH=(-H "X-Internal-Api-Key: $ORDER_SERVICE_API_KEY")
 SMOKE_USERNAME="${SMOKE_USERNAME:-admin}"
 SMOKE_PASSWORD="${SMOKE_PASSWORD:-tempP@ss123}"
 WAIT_SECONDS="${WAIT_SECONDS:-180}"
@@ -67,7 +69,8 @@ ORDER_ID="$(jq -r .id "$BODY")"
 [[ -n "$(jq -r '.cashierId // empty' "$BODY")" ]] || fail "cashierId was not set from the authenticated user"
 pass "order $ORDER_ID total=235 cashierId set"
 
-expect 200 "$(request GET "$ORDER_SERVICE_URL/api/orders/$ORDER_ID")" "order $ORDER_ID persisted in order-service"
+expect 401 "$(request GET "$ORDER_SERVICE_URL/api/orders/$ORDER_ID")" "order-service rejects calls without the internal API key"
+expect 200 "$(request GET "$ORDER_SERVICE_URL/api/orders/$ORDER_ID" "${SVC_AUTH[@]}")" "order $ORDER_ID persisted in order-service"
 [[ "$(jq -r .customerId "$BODY")" == "$CUSTOMER_ID" ]] || fail "order-service has wrong customerId"
 
 expect 200 "$(request GET "$MONOLITH_URL/api/orders/$ORDER_ID" "${AUTH[@]}")" "read order via monolith"
@@ -86,6 +89,6 @@ expect 400 "$(request POST "$MONOLITH_URL/api/orders" "${AUTH[@]}" "${JSON[@]}" 
 expect 400 "$(request POST "$MONOLITH_URL/api/orders" "${AUTH[@]}" "${JSON[@]}" -d "{\"customerId\":$CUSTOMER_ID,\"discount\":1000,\"items\":[{\"productId\":1,\"unitPrice\":10,\"quantity\":1}]}")" "reject discount above order subtotal (order-service 400 passed through)"
 
 expect 204 "$(request DELETE "$MONOLITH_URL/api/orders/$ORDER_ID" "${AUTH[@]}")" "delete order via monolith"
-expect 404 "$(request GET "$ORDER_SERVICE_URL/api/orders/$ORDER_ID")" "order $ORDER_ID removed from order-service"
+expect 404 "$(request GET "$ORDER_SERVICE_URL/api/orders/$ORDER_ID" "${SVC_AUTH[@]}")" "order $ORDER_ID removed from order-service"
 
 echo "Smoke test passed"

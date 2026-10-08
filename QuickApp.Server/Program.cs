@@ -22,6 +22,7 @@ using QuickApp.Server.Authorization.Requirements;
 using QuickApp.Server.Configuration;
 using QuickApp.Server.Services;
 using QuickApp.Server.Services.Email;
+using Shared.Contracts.Orders;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -208,6 +209,11 @@ builder.Services.AddHttpClient<IOrdersService, OrdersServiceClient>(client =>
         var baseUrl = builder.Configuration["OrderService:BaseUrl"]
             ?? throw new InvalidOperationException("Configuration value 'OrderService:BaseUrl' was not found.");
         client.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/");
+
+        var apiKey = builder.Configuration["OrderService:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Configuration value 'OrderService:ApiKey' was not found.");
+        client.DefaultRequestHeaders.Add(OrderRoutes.ApiKeyHeader, apiKey);
     })
     .AddHttpMessageHandler<CorrelationIdDelegatingHandler>()
     .AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods());

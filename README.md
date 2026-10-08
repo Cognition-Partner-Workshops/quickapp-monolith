@@ -109,7 +109,7 @@ Orders are no longer stored in the monolith database. They are owned by `order-s
 [`quickapp-microservices`](https://github.com/Cognition-Partner-Workshops/quickapp-microservices) and accessed over HTTP:
 
 - `IOrdersService` is implemented by `OrdersServiceClient`, a typed `HttpClient` with the standard resilience handler (retries are disabled for POST/PUT/DELETE). It propagates `X-Correlation-ID`.
-- Configure the base URL with `OrderService:BaseUrl` (default `http://localhost:5003/`).
+- Configure the base URL with `OrderService:BaseUrl` (default `http://localhost:5003/`) and the service-to-service key with `OrderService:ApiKey` (required; sent as `X-Internal-Api-Key`, must match order-service `ServiceAuth:ApiKey`). Compose uses `ORDER_SERVICE_API_KEY`, default `local-dev-order-service-key`.
 - `api/orders` in the monolith is an authenticated facade over order-service. `api/customer` attaches each customer's orders from order-service.
 - The order contracts (`QuickApp.Core/Contracts/Orders`) are a vendored copy of `Shared.Contracts.Orders`.
 - Migration `ExtractOrdersToOrderService` drops `AppOrders`/`AppOrderDetails`. **Existing order data must be copied to order-service before applying it.**
